@@ -1,6 +1,6 @@
 /*
- * PROJECT:  AIModule
- * VERSION:  0.06
+ * PROJECT:  TetrAI
+ * VERSION:  0.90
  * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt)
  * AUTHOR:  (c) 2015 Eugene Zavidovsky
  * LINK:  https://github.com/Eug145/TetrAI
