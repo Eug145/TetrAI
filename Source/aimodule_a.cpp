@@ -1,7 +1,7 @@
 /*
  * PROJECT:  AIModule
- * VERSION:  0.06
- * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt)
+ * VERSION:  0.06-B001
+ * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt, ../GPLv3.txt)
  * AUTHOR:  (c) 2015 Eugene Zavidovsky
  * LINK:  https://github.com/Eug145/TetrAI
  *
@@ -27,11 +27,12 @@
 #include <functional>
 #include <numeric>
 #include <iterator>
+#include <cstdlib>
 
 namespace AIModule {
 
 double const Consts::age_group_tolerance {0.97};
-std::size_t const Consts::operands_numbers[] {2, 2, 2, 2};
+qint32 const Consts::operands_numbers[] {2, 2, 2, 2};
 
 quint32 sensor_score;
 QVector<qint32> sensor;
@@ -69,7 +70,7 @@ void set_sensor(unsigned int score, int next_figure, bool new_game,
     if (score <= 2147483647) {
         sensor[Consts::score_addr] = score;
     } else {
-        sensor[Consts::score_addr] = static_cast<qint32>(score - 2147483648);
+        sensor[Consts::score_addr] = ~static_cast<qint32>(score&0x7FFFFFFF);
     }
     sensor[Consts::next_figure_addr] = next_figure;
     sensor[Consts::player_mode_addr] = player_mode;
@@ -124,8 +125,8 @@ inline void Angel::evaluate_projections()
 inline void AngelScheme::enforce_plan_compliance(unsigned int history_time)
 {
     //TODO update to GCC 4.9 and use lvalue reference instead of pointer
-    int * const prj_act {&data[history_time].
-                         args[Consts::sensor_size - 1 + history_time]};
+    qint32 * const prj_act {&data[history_time].
+                            args[Consts::sensor_size - 1 + history_time]};
     if (*prj_act != Consts::any_act && *prj_act != current_act) {
         *prj_act = current_act;
     }
@@ -160,8 +161,8 @@ inline quint32 AngelScheme::calculate_instant(unsigned int history_time)
 {
     //TODO update to GCC 4.9 and use lvalue reference instead of pointer
     DaemonSchemeData<AngelTraits> * const hs {&data[history_time]};
-    int index_begin {strings[history_time]};
-    int index_end {strings[history_time + 1]};
+    qint32 index_begin {strings[history_time]};
+    qint32 index_end {strings[history_time + 1]};
     calculate_string(index_begin, index_end, *hs);
     Q_ASSERT(index_begin < index_end);
     return mask(hs->results.at(index_end - 1));
@@ -429,9 +430,9 @@ inline void Soul::rebase(int base_index)
 }
 
 template <bool calculation_is_reduced>
-inline void SoulScheme::update(QVector<int> const & args)
+inline void SoulScheme::update(QVector<qint32> const & args)
 {
-    int ss {(calculation_is_reduced) ? strings[0] : 0};
+    qint32 ss {(calculation_is_reduced) ? strings[0] : 0};
     DaemonScheme<SoulTraits>::update(args, ss, graph_size);
 }
 
@@ -560,7 +561,7 @@ inline DaemonScheme<T>::DaemonScheme() :
 }
 
 template <typename T>
-inline void DaemonScheme<T>::calculate_string(int g_begin, int g_end,
+inline void DaemonScheme<T>::calculate_string(qint32 g_begin, qint32 g_end,
                                               DaemonSchemeData<T> & hs)
 {
     Q_ASSERT(g_begin < T::strings_number && g_end < T::strings_number &&
@@ -591,9 +592,9 @@ template <typename T>
 inline QVector<Rsl<T> > DaemonScheme<T>::extract_result(
                                                        DaemonSchemeData<T> & hs)
 {
-    int const * s_data {hs.results.constData()};
+    qint32 const * s_data {hs.results.constData()};
     QVector<Rsl<T>> result {};
-    for (int ind : result_inds) {
+    for (qint32 ind : result_inds) {
         result.append(mask(s_data[ind]));
     }
     return result;
@@ -613,7 +614,7 @@ inline AngelTraits::ResultType DaemonScheme<AngelTraits>::mask(qint32 result)
 
 template <typename T>
 inline void DaemonScheme<T>::update(QVector<qint32> const & args,
-                                    int start_string, std::size_t nodes_number)
+                                    qint32 start_string, qint32 nodes_number)
 {
     //TODO update to GCC 4.9 and use lvalue reference instead of pointer
     DaemonSchemeData<T> * const hs {&data[0]};
@@ -622,14 +623,14 @@ inline void DaemonScheme<T>::update(QVector<qint32> const & args,
 }
 
 template <typename T>
-inline void DaemonScheme<T>::extract_memory(std::size_t nodes_number)
+inline void DaemonScheme<T>::extract_memory(qint32 nodes_number)
 {
     using S = DaemonSchemeData<T>;
     data.append(S{nodes_number});
-    int * di {&data[0].memory[0]};
+    qint32 * di {&data[0].memory[0]};
     //TODO update to GCC 4.9 and use lvalue reference instead of pointer
     QVarLengthArray<int, 1> const * const s_data {&data[1].results};
-    for (int i {0}; i < T::memory_size; ++i) {
+    for (qint32 i {0}; i < T::memory_size; ++i) {
         *di = s_data->at(memory_inds[i]);
         ++di;
     }
@@ -643,24 +644,24 @@ inline void DaemonScheme<T>::transform(DaemonScheme<T> const & sample)
 }
 
 template <typename T>
-inline DaemonSchemeData<T>::DaemonSchemeData(std::size_t sz) :
+inline DaemonSchemeData<T>::DaemonSchemeData(qint32 sz) :
     results {static_cast<int>(sz)}
 {
 
 }
 
-inline QVector<qint32> create_args(std::size_t args_size)
+inline QVector<qint32> create_args(qint32 args_size)
 {
     QVector<qint32> args {qDeepCopy(sensor)};
-    Q_ASSERT(static_cast<std::size_t>(sensor.size()) <= args_size);
-    args.resize(static_cast<int>(args_size));
+    Q_ASSERT(static_cast<qint32>(sensor.size()) <= args_size);
+    args.resize(args_size);
     return args;
 }
 
 inline void copy_plan_to_args(QVector<qint32> plan, QVector<qint32> & args)
 {
     Q_ASSERT(Consts::sensor_size + plan.size() <=
-             static_cast<std::size_t>(args.size()));
+             static_cast<qint32>(args.size()));
     std::copy(plan.cbegin(), plan.cend(),
               args.begin() + Consts::sensor_size);
 }

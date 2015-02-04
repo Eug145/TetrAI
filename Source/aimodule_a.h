@@ -1,7 +1,7 @@
 /*
  * PROJECT:  AIModule
- * VERSION:  0.06
- * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt)
+ * VERSION:  0.06-B001
+ * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt, ../GPLv3.txt)
  * AUTHOR:  (c) 2015 Eugene Zavidovsky
  * LINK:  https://github.com/Eug145/TetrAI
  *
@@ -29,7 +29,6 @@
 #include <QVarLengthArray>
 #include <QVector>
 #include <QtGlobal>
-#include <cstddef>
 
 namespace AIModule
 {
@@ -74,7 +73,7 @@ void update_current_act();
 void update_souls();
 void update_angels();
 
-QVector<qint32> create_args(std::size_t args_size);
+QVector<qint32> create_args(qint32 args_size);
 void copy_plan_to_args(QVector<qint32> plan, QVector<qint32> & args);
 
 template <typename T>

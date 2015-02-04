@@ -1,7 +1,7 @@
 /*
  * PROJECT:  AIModule
- * VERSION:  0.06
- * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt)
+ * VERSION:  0.06-B001
+ * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt, ../GPLv3.txt)
  * AUTHOR:  (c) 2015 Eugene Zavidovsky
  * LINK:  https://github.com/Eug145/TetrAI
  *
@@ -25,24 +25,23 @@
 #include "aimodule_a_intf_bb.h"
 #include <QVector>
 #include <QVarLengthArray>
-#include <cstddef>
 
 namespace AIModule {
 
-enum class ONLocation {nodes, args, memory};
+enum class ONLocation {origs, temps, args, memory};
 
 enum class FLocation {nodes, result, memory};
 
 class TIndex
 {
 public:
-    int ind;
+    qint32 ind;
 };
 
 class RIndex
 {
 public:
-    int ind;
+    qint32 ind;
 
 public:
     bool operator==(RIndex b);
@@ -55,6 +54,12 @@ struct GraphPlace
     NodeCore * core;
 };
 
+struct Connection
+{
+    RIndex node;
+    qint32 operand;
+};
+
 template <typename T>
 class SchemeFeaturer
 {
@@ -62,15 +67,16 @@ class SchemeFeaturer
     DaemonScheme<T> * target;
     Node<T> const * const originals;
     QVarLengthArray<NodeCore, T::graph_size_max> temporaries;
-    int * strings, * result_inds, * memory_inds;
+    qint32 * strings, * result_inds, * memory_inds;
 
     QVarLengthArray<TIndex, T::graph_size_max> original_inds;
     QVarLengthArray<RIndex, T::graph_size_max> transformed_inds;
     QVarLengthArray<TIndex, T::graph_size_max> temporary_inds;
     QVarLengthArray<int, T::graph_size_max> temporary_inds_backup;
 
-    std::size_t graph_size, n, nn, q, q_count;
-    int f_num, f_operand, f_required_id;
+    qint32 graph_size, n, nn, q, q_count;
+    int f_num;
+    qint32 f_operand, f_required_id;
     GraphPlace f_place, o_place, n_place;
     QVector<RIndex> some_illegals;
 
@@ -82,10 +88,6 @@ public:
 private:
     void prepare();
     void make_single_feature();
-    template <FLocation featured_place>
-    void make_single_feature_a();
-    template <FLocation featured_place, ONLocation old_place>
-    void make_single_feature_b();
     void choose_connection();
     void set_temporary_node(GraphPlace & p);
     void set_temporary_node_a(GraphPlace & p);
@@ -93,20 +95,28 @@ private:
     void get_required_id();
     void get_some_illegals();
     NodeCore const * get_node_core(RIndex r);
-    RIndex get_reflected_index(int i);
-    template <FLocation featured_place, ONLocation old_place>
-    void skip_nodes(std::size_t i);
-    template <FLocation featured_place, ONLocation old_place>
-    void insert_nodes(std::size_t i);
+    RIndex get_reflected_index(qint32 i);
+    template <FLocation featured_place>
+    void make_single_feature_a();
+    template <FLocation featured_place>
+    void skip_nodes(qint32 i);
+    void disconnect_node_string();
+    void disconnect_node_string_a(GraphPlace & a, Connection & b,
+                                  QVarLengthArray<RIndex> & queue);
+    template <ONLocation a_place>
+    void disconnect_node_string_b(GraphPlace & a, Connection & b,
+                                  QVarLengthArray<RIndex> & queue);
+    void disconnect_node(NodeCore * const a_core, Connection & b);
+    template <FLocation featured_place>
+    void insert_nodes(qint32 i);
     template <FLocation featured_place = FLocation::nodes, typename ...Op>
     void connect_abroad(GraphPlace & p, GraphPlace & fulcrum, Op ...op);
     bool set_checked_temporary_node(GraphPlace & p);
     void take_next_q();
     template <FLocation featured_place, ONLocation new_place>
-    void connect_nodes(GraphPlace & p, GraphPlace & fulcrum, int const op);
+    void connect_nodes(GraphPlace & p, GraphPlace & fulcrum, qint32 const op);
     template <FLocation featured_place, ONLocation new_place>
     void connect_nodes(GraphPlace & p, GraphPlace & fulcrum);
-    void disconnect_node();
 };
 
 template <>

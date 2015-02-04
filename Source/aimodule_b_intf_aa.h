@@ -1,7 +1,7 @@
 /*
  * PROJECT:  AIModule
- * VERSION:  0.06
- * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt)
+ * VERSION:  0.06-B001
+ * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt, ../GPLv3.txt)
  * AUTHOR:  (c) 2015 Eugene Zavidovsky
  * LINK:  https://github.com/Eug145/TetrAI
  *
@@ -28,32 +28,33 @@
 
 namespace AIModule {
 
-enum class NodeClass {dummy, adder, subtractor, multiplier, divider};
+enum class NodeClass : qint32 {dummy, adder, subtractor, multiplier, divider};
 
 class NodeCore
 {
 public:
     NodeClass n_class;
-    int actual_subgraph_id, required_subgraph_id;
-    int operands_inds[Consts::operands_number_max];
-    QVarLengthArray<int, 1> recipients_inds[Consts::operands_number_max];
+    qint32 actual_subgraph_id, required_subgraph_id;
+    qint32 operands_inds[Consts::operands_number_max];
+    QVarLengthArray<qint32, 1> recipients_inds[Consts::operands_number_max];
+    qint32 recepients_number;
 
 public:
-    int get_operands_number() const;
+    qint32 get_operands_number() const;
 };
 
 template <typename T>
 class Node : public NodeCore
 {
 public:
-    int ind;
-    int (Node::* calculate)(DaemonSchemeData<T> & hs);
+    qint32 ind;
+    qint32 (Node::* calculate)(DaemonSchemeData<T> & hs);
 
 public:
-    int calculate_addition(DaemonSchemeData<T> & hs);
-    int calculate_subtraction(DaemonSchemeData<T> & hs);
-    int calculate_multiplication(DaemonSchemeData<T> & hs);
-    int calculate_division(DaemonSchemeData<T> & hs);
+    qint32 calculate_addition(DaemonSchemeData<T> & hs);
+    qint32 calculate_subtraction(DaemonSchemeData<T> & hs);
+    qint32 calculate_multiplication(DaemonSchemeData<T> & hs);
+    qint32 calculate_division(DaemonSchemeData<T> & hs);
 };
 
 }

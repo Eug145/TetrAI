@@ -1,7 +1,7 @@
 /*
  * PROJECT:  AIModule
- * VERSION:  0.06
- * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt)
+ * VERSION:  0.06-B001
+ * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt, ../GPLv3.txt)
  * AUTHOR:  (c) 2015 Eugene Zavidovsky
  * LINK:  https://github.com/Eug145/TetrAI
  *
@@ -26,7 +26,7 @@
 
 namespace AIModule {
 
-std::uniform_int_distribution<std::size_t> random_nodes_number;
+std::uniform_int_distribution<qint32> random_nodes_number;
 
 template <typename T>
 SchemeFeaturer<T>::SchemeFeaturer(DaemonScheme<T> const & sa,
@@ -38,7 +38,7 @@ SchemeFeaturer<T>::SchemeFeaturer(DaemonScheme<T> const & sa,
     nn {s.graph_size + T::result_size + T::memory_size}
     nn {s.graph_size*Consts::operand_number_max} */
 {
-    for (int i {0}; i < graph_size; ++i) {
+    for (qint32 i {0}; i < graph_size; ++i) {
         TIndex t;
         RIndex r;
         t.ind = r.ind = i;
@@ -61,10 +61,10 @@ inline void SchemeFeaturer<T>::prepare()
 template <typename T>
 void SchemeFeaturer<T>::SchemeFeaturer::make()
 {
-    static_assert(std::numeric_limits<std::size_t>::max() >
+    static_assert(std::numeric_limits<unsigned int>::max() >
                   (T::graph_size_max + T::result_size + T::memory_size)*
                   Consts::operands_number_max, "Consts are too large (f_num).");
-    static_assert(std::numeric_limits<std::size_t>::max() >
+    static_assert(std::numeric_limits<unsigned int>::max() >
                   (T::graph_size_max + T::all_args_size + T::memory_size),
                   "Consts are too large (n_place).");
 
@@ -103,59 +103,6 @@ inline void SchemeFeaturer<T>::make_single_feature()
 }
 
 template <typename T>
-template <FLocation featured_place>
-inline void SchemeFeaturer<T>::make_single_feature_a()
-{
-    if (o_place.r.ind < T::graph_size_max) {
-        o_place.t = original_inds.at(o_place.r.ind);
-        Q_ASSERT(o_place.t.ind >= 0);
-        set_temporary_node(o_place);
-        make_single_feature_b<featured_place, ONLocation::nodes>();
-    } else if (o_place.r.ind < T::graph_size_max + T::all_args_size) {
-        make_single_feature_b<featured_place, ONLocation::args>();
-    } else if (o_place.r.ind < T::graph_size_max +
-                               T::all_args_size + T::memory_size) {
-        make_single_feature_b<featured_place, ONLocation::memory>();
-    } else {
-        Q_ASSERT(o_place.r.ind >= T::temporary_inds_start);
-        int i {o_place.r.ind - T::temporary_inds_start};
-        o_place.t = temporary_inds.at(i);
-        o_place.core = &temporaries[i];
-        make_single_feature_b<featured_place, ONLocation::nodes>();
-    }
-}
-
-template <typename T>
-template <FLocation featured_place, ONLocation old_place>
-void SchemeFeaturer<T>::make_single_feature_b()
-{
-    q = random_u_integer(reng);
-    q_count = std::numeric_limits<unsigned int>::max()/n;
-
-    static_assert(T::nodes_skip_max >= 1 && T::nodes_insert_max >= 1, "Err!");
-
-    if (graph_size == T::graph_size_max) {
-        skip_nodes<featured_place, old_place>(random_nodes_number(reng,
-                       std::uniform_int_distribution<std::size_t>::param_type{1,
-                                                           T::nodes_skip_max}));
-    } else {
-        Q_ASSERT(graph_size < T::graph_size_max);
-        std::size_t i {random_nodes_number(reng,
-                       std::uniform_int_distribution<std::size_t>::param_type{1,
-                      T::nodes_skip_max + qMin(std::size_t{T::nodes_insert_max},
-                                             T::graph_size_max - graph_size)})};
-        if(i <= T::nodes_skip_max) {
-            skip_nodes<featured_place, old_place>(i);
-        } else {
-            insert_nodes<featured_place, old_place>(i - T::nodes_skip_max);
-        }
-    }
-    if (old_place == ONLocation::nodes && featured_place == FLocation::nodes) {
-        disconnect_node();
-    }
-}
-
-template <typename T>
 inline void SchemeFeaturer<T>::choose_connection()
 {
     //TODO change the way you get f_num
@@ -171,7 +118,6 @@ inline void SchemeFeaturer<T>::set_temporary_node(GraphPlace & p)
     p.r = transformed_inds.at(p.t.ind);
     if (p.r.ind < T::graph_size_max) {
         set_temporary_node_a(p);
-        p.core = &temporaries.last();
     } else {
         p.core = &temporaries[p.r.ind - T::temporary_inds_start];
     }
@@ -187,6 +133,7 @@ inline void SchemeFeaturer<T>::set_temporary_node_a(GraphPlace & p)
     corr_r.ind = temporaries.size() - 1 + T::temporary_inds_start;
     transformed_inds[p.t.ind] = corr_r;
     p.r = corr_r;
+    p.core = &temporaries.last();
 }
 
 template <>
@@ -206,28 +153,30 @@ inline void SchemeFeaturer<AngelTraits>::get_required_id()
 }
 
 template <typename T>
-inline void SchemeFeaturer<T>::get_some_illegals()
+void SchemeFeaturer<T>::get_some_illegals()
 {
     QVarLengthArray<RIndex> queue;
-    RIndex r;
-    queue.append(f_place.r);
-    while (!queue.isEmpty()) {
-        r.ind = queue.last().ind; queue.removeLast();
-        if (r.ind == -1) { continue; }
-        some_illegals.append(r);
-        NodeCore const * const curr_core {get_node_core(r)};
-        if (curr_core->actual_subgraph_id > f_required_id) { continue; }
-        for (int i {0}; i < Consts::operands_number_max; ++i) {
-            QVector<int>::const_iterator si {curr_core->
-                                             recipients_inds[i].cbegin()};
-            QVector<int>::const_iterator ei {curr_core->
-                                             recipients_inds[i].end()};
-            while (si != ei) {
-                queue.append(get_reflected_index(*si));
-                ++si;
+    RIndex r {f_place.r.ind};
+    do {
+        if (r.ind != -1) {
+            some_illegals.append(r);
+            NodeCore const * const curr_core {get_node_core(r)};
+            if (curr_core->actual_subgraph_id <= f_required_id) {
+                for (qint32 i {0}; i < Consts::operands_number_max; ++i) {
+                    QVector<qint32>::const_iterator si {curr_core->
+                                                   recipients_inds[i].cbegin()};
+                    QVector<qint32>::const_iterator ei {curr_core->
+                                                   recipients_inds[i].end()};
+                    while (si != ei) {
+                        queue.append(get_reflected_index(*si));
+                        ++si;
+                    }
+                }
             }
         }
-    }
+        if (queue.isEmpty()) { break; }
+        r.ind = queue.last().ind; queue.removeLast();
+    } while (true);
 }
 
 template <typename T>
@@ -242,11 +191,11 @@ inline NodeCore const * SchemeFeaturer<T>::get_node_core(RIndex r)
 }
 
 template <typename T>
-inline RIndex SchemeFeaturer<T>::get_reflected_index(int i)
+inline RIndex SchemeFeaturer<T>::get_reflected_index(qint32 i)
 {
     RIndex r;
     if (i < T::graph_size_max) {
-        int t {original_inds.at(i).ind};
+        qint32 t {original_inds.at(i).ind};
         if (t < 0) {
             r.ind = -1;
         } else {
@@ -258,20 +207,164 @@ inline RIndex SchemeFeaturer<T>::get_reflected_index(int i)
     return r;
 }
 
-template <typename T>
-template <FLocation featured_place, ONLocation old_place>
-inline void SchemeFeaturer<T>::skip_nodes(std::size_t i)
+/* template <typename T>
+inline TIndex SchemeFeaturer<T>::get_transformed_index(RIndex r)
 {
-    //TODO .... think about it
-    connect_abroad(o_place, n_place, static_cast<int>(i));
+    TIndex t;
+    if (r.ind < T::graph_size_max) {
+        t.ind = original_inds.at(r.ind).ind;
+    } else {
+        t.ind = temporary_inds.at(r.ind - T::temporary_inds_start);
+    }
+    return t;
+} */
+
+template <typename T>
+template <FLocation featured_place>
+inline void SchemeFeaturer<T>::make_single_feature_a()
+{
+    q = random_u_integer(reng);
+    q_count = std::numeric_limits<unsigned int>::max()/n;
+
+    static_assert(T::nodes_skip_max >= 1 && T::nodes_insert_max >= 1, "Err!");
+
+    if (graph_size == T::graph_size_max) {
+        skip_nodes<featured_place>(random_nodes_number(reng,
+                            std::uniform_int_distribution<qint32>::param_type{1,
+                                                           T::nodes_skip_max}));
+    } else {
+        Q_ASSERT(graph_size < T::graph_size_max);
+        qint32 i {random_nodes_number(reng,
+                            std::uniform_int_distribution<qint32>::param_type{1,
+                           T::nodes_skip_max + qMin(qint32{T::nodes_insert_max},
+                                             T::graph_size_max - graph_size)})};
+        if(i <= T::nodes_skip_max) {
+            skip_nodes<featured_place>(i);
+        } else {
+            insert_nodes<featured_place>(i - T::nodes_skip_max);
+        }
+    }
 }
 
 template <typename T>
-template <FLocation featured_place, ONLocation old_place>
-inline void SchemeFeaturer<T>::insert_nodes(std::size_t i)
+template <FLocation featured_place>
+void SchemeFeaturer<T>::skip_nodes(qint32 i)
 {
     //TODO .... think about it
     connect_abroad(o_place, n_place, static_cast<int>(i));
+
+    if (featured_place == FLocation::nodes) {
+        disconnect_node_string();
+    }
+}
+
+template <typename T>
+void SchemeFeaturer<T>::disconnect_node_string()
+{
+    QVarLengthArray<RIndex> queue;
+    GraphPlace a {o_place};
+    Connection b {f_place.r, f_operand};
+    disconnect_node_string_a(a, b, queue);
+    while (!queue.isEmpty()) {
+        b.node = queue.last(); queue.removeLast();
+        int s {get_node_core(b.node)->get_operands_number()};
+        for (int i {0}; i < s; ++i) {
+            //TODO ....
+        }
+    }
+}
+
+template <typename T>
+inline void SchemeFeaturer<T>::disconnect_node_string_a(GraphPlace & a,
+                                Connection & b, QVarLengthArray<RIndex> & queue)
+{
+    if (a.r.ind < T::graph_size_max) {
+        a.t = original_inds.at(a.r.ind);
+        Q_ASSERT(a.t.ind >= 0);
+        a.r = transformed_inds.at(a.t.ind);
+        if (a.r.ind < T::graph_size_max) {
+            disconnect_node_string_b<ONLocation::origs>(a, b, queue);
+        } else {
+            disconnect_node_string_b<ONLocation::temps>(a, b, queue);
+        }
+    }
+    if (a.r.ind >= T::temporary_inds_start) {
+        disconnect_node_string_b<ONLocation::temps>(a, b, queue);
+    }
+}
+
+template <typename T>
+template <ONLocation a_place>
+inline void SchemeFeaturer<T>::disconnect_node_string_b<a_place>(GraphPlace & a,
+                                Connection & b, QVarLengthArray<RIndex> & queue)
+{
+    Q_ASSERT(a_place == ONLocation::origs || a_place == ONLocation::temps);
+    NodeCore const * a_ccore;
+    NodeCore * a_core;
+    if (a_place == ONLocation::origs) {
+        a_ccore = &originals[a.r.ind];
+    } else {
+        int i {a.r.ind - T::temporary_inds_start};
+        a_ccore = a_core = &temporaries[i];
+    }
+    Q_ASSERT(a_ccore->recepients_number >= 1);
+    if (a_ccore->recepients_number == 1) {
+        //TODO ....
+    } else {
+        if (a_place == ONLocation::origs) {
+            set_temporary_node_a();
+            disconnect_node(a.core, b);
+        } else {
+            disconnect_node(a_core, b);
+        }
+    }
+}
+
+template <typename T>
+inline void SchemeFeaturer<T>::disconnect_node(NodeCore * const a_core,
+                                               Connection & b)
+{
+    //TODO update to GCC 4.9 and use lvalue reference instead of pointer
+    QVarLengthArray<qint32, 1> * r_indices {&a_core->
+                                            recipients_inds[b.operand]};
+    QVarLengthArray<qint32, 1>::const_iterator si {r_indices->cbegin()};
+    QVarLengthArray<qint32, 1>::const_iterator ei {r_indices->cbegin()};
+    Q_ASSERT(b.node.ind >= T::temporary_inds_start);
+    qint32 i {temporary_inds_backup.at(b.node.ind -
+                                       T::temporary_inds_start)};
+    while (*si != i && *si != b.node.ind) {
+        Q_ASSERT(si != ei);
+        ++si;
+    }
+    r_indices->erase(si);
+}
+
+template <typename T>
+template <FLocation featured_place>
+void SchemeFeaturer<T>::insert_nodes(qint32 i)
+{
+    if (o_place.r.ind < T::graph_size_max) {
+        o_place.t = original_inds.at(o_place.r.ind);
+        Q_ASSERT(o_place.t.ind >= 0);
+        set_temporary_node(o_place);
+        //TODO .... think about it
+
+    } else if (o_place.r.ind >= T::temporary_inds_start) {
+        Q_ASSERT(o_place.r.ind >= T::temporary_inds_start);
+        qint32 i {o_place.r.ind - T::temporary_inds_start};
+        o_place.t = temporary_inds.at(i);
+        o_place.core = &temporaries[i];
+
+        //TODO .... think about it
+    }
+
+
+    connect_abroad(o_place, n_place, static_cast<int>(i));
+
+    if ((old_place == ONLocation::origs || old_place == ONLocation::temps) &&
+                                           featured_place == FLocation::nodes) {
+        disconnect_node();
+    }
 }
 
 template <typename T>
@@ -284,7 +377,7 @@ inline void SchemeFeaturer<T>::connect_abroad(GraphPlace & p,
         if (p.t.ind < graph_size) {
             if (set_checked_temporary_node(p)) {
                 connect_nodes<featured_place,
-                              ONLocation::nodes>(p, fulcrum, op...);
+                              ONLocation::temps>(p, fulcrum, op...);
                 break;
             }
         } else if ((p.r.ind = p.t.ind - graph_size) < T::all_args_size) {
@@ -310,11 +403,10 @@ inline bool SchemeFeaturer<T>::set_checked_temporary_node(GraphPlace & p)
         if (originals[p.r.ind].actual_subgraph_id <= f_required_id &&
                                              some_illegals.indexOf(p.r) == -1) {
             set_temporary_node_a(p);
-            p.core = &temporaries.last();
             return true;
         }
     } else {
-        int i {p.r.ind - T::temporary_inds_start};
+        qint32 i {p.r.ind - T::temporary_inds_start};
         if (temporaries.at(i).actual_subgraph_id <= f_required_id &&
                                              some_illegals.indexOf(p.r) == -1) {
             p.core = &temporaries[i];
@@ -337,11 +429,11 @@ inline void SchemeFeaturer<T>::take_next_q()
 template <typename T>
 template <FLocation featured_place, ONLocation new_place>
 inline void SchemeFeaturer<T>::connect_nodes(GraphPlace & a,
-                                             GraphPlace & b, int const op)
+                                             GraphPlace & b, qint32 const op)
 {
     Q_ASSERT(featured_place == FLocation::nodes);
     b.core->operands_inds[op] = a.r.ind;
-    if (new_place == ONLocation::nodes) {
+    if (new_place == ONLocation::temps) {
         a.core->recipients_inds[op].append(b.r.ind);
     }
 }
@@ -359,33 +451,14 @@ inline void SchemeFeaturer<T>::connect_nodes(GraphPlace & a,
     }
 }
 
-template <typename T>
-inline void SchemeFeaturer<T>::disconnect_node()
-{
-    //TODO update to GCC 4.9 and use lvalue reference instead of pointer
-    QVarLengthArray<int, 1> * r_indices {&o_place.core->
-                                         recipients_inds[f_operand]};
-    QVarLengthArray<int, 1>::const_iterator si {r_indices->cbegin()};
-    QVarLengthArray<int, 1>::const_iterator ei {r_indices->cbegin()};
-    Q_ASSERT(f_place.r.ind >= T::temporary_inds_start);
-    int f_place_i {temporary_inds_backup.at(f_place.r.ind -
-                                            T::temporary_inds_start)};
-    while (si != ei) {
-        if (*si == f_place_i || *si == f_place.r.ind) { break; }
-        ++si;
-    }
-    Q_ASSERT(si != ei);
-    r_indices->erase(si);
-}
-
 inline bool RIndex::operator==(RIndex b)
 {
     return ind == b.ind;
 }
 
-inline int NodeCore::get_operands_number() const
+inline qint32 NodeCore::get_operands_number() const
 {
-    return Consts::operands_numbers[static_cast<int>(n_class) - 1];
+    return Consts::operands_numbers[static_cast<qint32>(n_class) - 1];
 }
 
 template

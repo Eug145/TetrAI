@@ -1,7 +1,7 @@
 /*
  * PROJECT:  AIModule
- * VERSION:  0.06
- * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt)
+ * VERSION:  0.06-B001
+ * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt, ../GPLv3.txt)
  * AUTHOR:  (c) 2015 Eugene Zavidovsky
  * LINK:  https://github.com/Eug145/TetrAI
  *
@@ -27,7 +27,6 @@
 #include <QVarLengthArray>
 #include <QVector>
 #include <QtGlobal>
-#include <cstddef>
 #include <numeric>
 #include <random>
 #include <limits>
@@ -43,28 +42,29 @@ class DaemonScheme
 public:
     History<DaemonSchemeData<T>> data;
     Node<T> graph[T::graph_size_max];
-    std::size_t graph_size, graph_size_n, graph_size_nn;
+    qint32 graph_size, graph_size_n, graph_size_nn;
 
-    int strings[T::strings_number];
+    qint32 strings[T::strings_number];
 
-    int result_inds[T::result_size];
-    int memory_inds[T::memory_size];
+    qint32 result_inds[T::result_size];
+    qint32 memory_inds[T::memory_size];
 
 public:
     DaemonScheme();
 
-    void calculate_string(int g_begin, int g_end, DaemonSchemeData<T> & hs);
+    void calculate_string(qint32 g_begin, qint32 g_end,
+                          DaemonSchemeData<T> & hs);
     Rsl<T> mask(qint32 result);
     QVector<Rsl<T>> calculate_result(QVector<qint32> const args);
 
     void transform(DaemonScheme<T> const & sample);
 
     void update(QVector<qint32> const & args,
-                int start_string, std::size_t nodes_number);
+                qint32 start_string, qint32 nodes_number);
 
 private:
     QVector<Rsl<T>> extract_result(DaemonSchemeData<T> & hs);
-    void extract_memory(std::size_t nodes_number);
+    void extract_memory(qint32 nodes_number);
 };
 
 template <>
@@ -76,7 +76,7 @@ class SoulScheme : protected DaemonScheme<SoulTraits>
 {
 public:
     template <bool calculation_is_reduced>
-    void update(QVector<int> const & args);
+    void update(QVector<qint32> const & args);
 };
 
 class AngelScheme : protected DaemonScheme<AngelTraits>
@@ -149,8 +149,7 @@ class Angel : public Daemon<AngelTraits>, AngelScheme
 {
     QVector<unsigned int> projections_instants;
 
-    unsigned int random_buffer;
-    std::size_t new_prj_count, buffer_count;
+    unsigned int random_buffer, new_prj_count, buffer_count;
 
     QVector<PortfolioData> portfolio;
     QVector<PortfolioData> portfolio_bases[AngelTraits::cluster_size - 1];

@@ -1,7 +1,7 @@
 /*
  * PROJECT:  AIModule
- * VERSION:  0.06
- * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt)
+ * VERSION:  0.06-B001
+ * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt, ../GPLv3.txt)
  * AUTHOR:  (c) 2015 Eugene Zavidovsky
  * LINK:  https://github.com/Eug145/TetrAI
  *
@@ -18,22 +18,17 @@
  *  You should have received a copy of the GNU Lesser General Public License 
  *  along with this program. If not, see: <http://www.gnu.org/licenses/>.
  */
-  
-#ifndef AIMODULE_A_INTF_A_H
-#define AIMODULE_A_INTF_A_H
+   
+#ifndef AIMODULE_B_H
+#define AIMODULE_B_H
 
-#include <QVector>
+#include "aimodule_b_intf_aa.h"
+#include "aimodule_b_intf_ab.h"
 
-namespace AIModule
-{
+namespace AIModule {
 
-void init();
-
-void set_sensor(unsigned int score, int next_figure, bool new_game,
-                int player_mode, int human_act, QVector<int> board);
-
-int do_ai_cycle();
+extern std::uniform_int_distribution<qint32> random_nodes_number;
 
 }
 
-#endif // AIMODULE_A_INTF_A_H
+#endif // AIMODULE_B_H

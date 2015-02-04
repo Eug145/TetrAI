@@ -1,7 +1,7 @@
 /*
  * PROJECT:  AIModule
- * VERSION:  0.06
- * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt)
+ * VERSION:  0.06-B001
+ * LICENSE:  GNU Lesser GPL v3 (../LICENSE.txt, ../GPLv3.txt)
  * AUTHOR:  (c) 2015 Eugene Zavidovsky
  * LINK:  https://github.com/Eug145/TetrAI
  *
@@ -24,22 +24,21 @@
 
 #include <QtGlobal>
 #include <QVarLengthArray>
-#include <cstddef>
 #include <algorithm>
 
 template <typename T>
 class History
 {
     int next_index;
-    std::size_t size_max;
+    int size_max;
     QVarLengthArray<T> hi;
 
 public:
-    explicit History(std::size_t sz = 0);
+    explicit History(int sz = 0);
 
-    std::size_t size() const;
-    std::size_t capacity() const;
-    void reserve(std::size_t sz);
+    int size() const;
+    int capacity() const;
+    void reserve(int sz);
     QVarLengthArray<T> & straighten();
     void clear();
 
@@ -51,34 +50,34 @@ public:
 };
 
 template <typename T>
-History<T>::History(std::size_t sz) :
+History<T>::History(int sz) :
     next_index {0}, size_max {sz}
 {
     hi.reserve(sz);
 }
 
 template <typename T>
-inline std::size_t History<T>::size() const
+inline int History<T>::size() const
 {
     return hi.size();
 }
 
 template <typename T>
-inline std::size_t History<T>::capacity() const
+inline int History<T>::capacity() const
 {
     return size_max;
 }
 
 template <typename T>
-inline void History<T>::reserve(std::size_t sz)
+inline void History<T>::reserve(int sz)
 {
     size_max = sz;
     if (hi.size() <= sz) {
-        hi.reserve(static_cast<int>(sz));
+        hi.reserve(sz);
         return;
     }
 
-    std::size_t diff {next_index - sz};
+    int diff {next_index - sz};
     if (diff < 0) {
         typename QVarLengthArray<T>::iterator ei {hi.end()};
         typename QVarLengthArray<T>::iterator di {hi.begin() + next_index};
@@ -91,7 +90,7 @@ inline void History<T>::reserve(std::size_t sz)
         typename QVarLengthArray<T>::iterator si {ei - next_index};
         std::move(si, ei, di);
     }
-    hi.resize(static_cast<int>(sz)); hi.squeeze();
+    hi.resize(sz); hi.squeeze();
 }
 
 template <typename T>
@@ -151,7 +150,7 @@ inline T const & History<T>::operator[](int t) const
 template <typename T>
 inline T History<T>::average() const
 {
-    std::size_t sz {static_cast<std::size_t>(hi.size())};
+    int sz {hi.size()};
     if (sz > 0) {
         return std::accumulate(hi.cbegin(), hi.cend(), 0)/sz;
     }
