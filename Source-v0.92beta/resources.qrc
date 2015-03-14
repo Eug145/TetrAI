@@ -1,0 +1,19 @@
+<RCC>
+    <qresource prefix="/buttons">
+        <file alias="human.png">images/human_24.png</file>
+        <file alias="pause.png">images/pause_24.png</file>
+        <file alias="slow.png">images/slow_24.png</file>
+        <file alias="stop.png">images/stop_24.png</file>
+        <file alias="fast.png">images/fast_24.png</file>
+    </qresource>
+    <qresource prefix="/chips">
+        <file alias="0.png">images/chip0.png</file>
+        <file alias="1.png">images/chip1.png</file>
+        <file alias="2.png">images/chip2.png</file>
+        <file alias="3.png">images/chip3.png</file>
+        <file alias="4.png">images/chip4.png</file>
+        <file alias="5.png">images/chip5.png</file>
+        <file alias="6.png">images/chip6.png</file>
+        <file alias="7.png">images/chip7.png</file>
+    </qresource>
+</RCC>

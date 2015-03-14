@@ -1,4 +1,4 @@
-TetrAI v0.91alpha
+TetrAI v0.92beta
 ============
 
 TetrAI is a try to demonstrate an "artificial intelligence" module based on doubled genetic algorithm.
